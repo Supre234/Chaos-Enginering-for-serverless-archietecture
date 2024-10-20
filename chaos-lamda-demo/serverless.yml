@@ -1,0 +1,60 @@
+service: chaos-lambda-demo
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: dev
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - cloudwatch:PutMetricData
+      Resource: "*"
+
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - http:
+          path: hello
+          method: get
+
+  processOrder:
+    handler: handler.processOrder
+    events:
+      - http:
+          path: orders/{orderId}
+          method: get
+
+resources:
+  Resources:
+    OnFailureFunction:
+      Type: AWS::Lambda::Function
+      Properties:
+        Handler: handler.onFailure
+        Runtime: nodejs18.x
+        Role: !GetAtt LambdaExecutionRole.Arn
+        Code:
+          ZipFile: !Sub |
+            const exports = {};
+            exports.onFailure = async (event) => {
+              console.log('Function failed:', event);
+            };
+            module.exports = exports;
+    LambdaExecutionRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - "sts:AssumeRole"
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole

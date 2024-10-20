@@ -1,0 +1,578 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The AWS CloudFormation template for this Serverless application",
+  "Resources": {
+    "ServerlessDeploymentBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ServerlessDeploymentBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "ServerlessDeploymentBucket"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "ServerlessDeploymentBucket"
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "ServerlessDeploymentBucket"
+                      }
+                    ]
+                  ]
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": false
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "HelloLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/chaos-lambda-demo-dev-hello"
+      }
+    },
+    "ProcessOrderLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/chaos-lambda-demo-dev-processOrder"
+      }
+    },
+    "IamRoleLambdaExecution": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": {
+              "Fn::Join": [
+                "-",
+                [
+                  "chaos-lambda-demo",
+                  "dev",
+                  "lambda"
+                ]
+              ]
+            },
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:CreateLogGroup",
+                    "logs:TagResource"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/chaos-lambda-demo-dev*:*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/chaos-lambda-demo-dev*:*:*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "cloudwatch:PutMetricData"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ],
+        "Path": "/",
+        "RoleName": {
+          "Fn::Join": [
+            "-",
+            [
+              "chaos-lambda-demo",
+              "dev",
+              {
+                "Ref": "AWS::Region"
+              },
+              "lambdaRole"
+            ]
+          ]
+        }
+      }
+    },
+    "HelloLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/chaos-lambda-demo/dev/1718987601010-2024-06-21T16:33:21.010Z/chaos-lambda-demo.zip"
+        },
+        "Handler": "handler.hello",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "chaos-lambda-demo-dev-hello",
+        "MemorySize": 1024,
+        "Timeout": 6,
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "HelloLogGroup"
+      ]
+    },
+    "ProcessOrderLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/chaos-lambda-demo/dev/1718987601010-2024-06-21T16:33:21.010Z/chaos-lambda-demo.zip"
+        },
+        "Handler": "handler.processOrder",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "chaos-lambda-demo-dev-processOrder",
+        "MemorySize": 1024,
+        "Timeout": 6,
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "ProcessOrderLogGroup"
+      ]
+    },
+    "HelloLambdaVersion2sdLZc9HMUkk9yEhrY100zK59TPp8OMvY3sSB4YLlVg": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "HelloLambdaFunction"
+        },
+        "CodeSha256": "JWl5rH1H/W2DWtgiD8nMrxX/xbeVo/2SIHO1RipEQbE="
+      }
+    },
+    "ProcessOrderLambdaVersionm2AFrjSAGWXRAClbSwz0yyKhILbOnl8CBtCLGidVb4": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "ProcessOrderLambdaFunction"
+        },
+        "CodeSha256": "JWl5rH1H/W2DWtgiD8nMrxX/xbeVo/2SIHO1RipEQbE="
+      }
+    },
+    "ApiGatewayRestApi": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "Name": "dev-chaos-lambda-demo",
+        "EndpointConfiguration": {
+          "Types": [
+            "EDGE"
+          ]
+        },
+        "Policy": ""
+      }
+    },
+    "ApiGatewayResourceHello": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::GetAtt": [
+            "ApiGatewayRestApi",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "hello",
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        }
+      }
+    },
+    "ApiGatewayResourceOrders": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::GetAtt": [
+            "ApiGatewayRestApi",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "orders",
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        }
+      }
+    },
+    "ApiGatewayResourceOrdersOrderidVar": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "ApiGatewayResourceOrders"
+        },
+        "PathPart": "{orderId}",
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        }
+      }
+    },
+    "ApiGatewayMethodHelloGet": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "HttpMethod": "GET",
+        "RequestParameters": {},
+        "ResourceId": {
+          "Ref": "ApiGatewayResourceHello"
+        },
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        },
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "HelloLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "MethodResponses": []
+      },
+      "DependsOn": [
+        "HelloLambdaPermissionApiGateway"
+      ]
+    },
+    "ApiGatewayMethodOrdersOrderidVarGet": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "HttpMethod": "GET",
+        "RequestParameters": {},
+        "ResourceId": {
+          "Ref": "ApiGatewayResourceOrdersOrderidVar"
+        },
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        },
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "ProcessOrderLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "MethodResponses": []
+      },
+      "DependsOn": [
+        "ProcessOrderLambdaPermissionApiGateway"
+      ]
+    },
+    "ApiGatewayDeployment1718987600325": {
+      "Type": "AWS::ApiGateway::Deployment",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        },
+        "StageName": "dev"
+      },
+      "DependsOn": [
+        "ApiGatewayMethodHelloGet",
+        "ApiGatewayMethodOrdersOrderidVarGet"
+      ]
+    },
+    "HelloLambdaPermissionApiGateway": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "HelloLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "/*/*"
+            ]
+          ]
+        }
+      }
+    },
+    "ProcessOrderLambdaPermissionApiGateway": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ProcessOrderLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "/*/*"
+            ]
+          ]
+        }
+      }
+    },
+    "OnFailureFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "handler.onFailure",
+        "Runtime": "nodejs18.x",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Code": {
+          "ZipFile": {
+            "Fn::Sub": "const exports = {};\nexports.onFailure = async (event) => {\n  console.log('Function failed:', event);\n};\nmodule.exports = exports;\n"
+          }
+        }
+      }
+    },
+    "LambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "ServerlessDeploymentBucketName": {
+      "Value": {
+        "Ref": "ServerlessDeploymentBucket"
+      },
+      "Export": {
+        "Name": "sls-chaos-lambda-demo-dev-ServerlessDeploymentBucketName"
+      }
+    },
+    "HelloLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "HelloLambdaVersion2sdLZc9HMUkk9yEhrY100zK59TPp8OMvY3sSB4YLlVg"
+      },
+      "Export": {
+        "Name": "sls-chaos-lambda-demo-dev-HelloLambdaFunctionQualifiedArn"
+      }
+    },
+    "ProcessOrderLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "ProcessOrderLambdaVersionm2AFrjSAGWXRAClbSwz0yyKhILbOnl8CBtCLGidVb4"
+      },
+      "Export": {
+        "Name": "sls-chaos-lambda-demo-dev-ProcessOrderLambdaFunctionQualifiedArn"
+      }
+    },
+    "ServiceEndpoint": {
+      "Description": "URL of the service endpoint",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Ref": "ApiGatewayRestApi"
+            },
+            ".execute-api.",
+            {
+              "Ref": "AWS::Region"
+            },
+            ".",
+            {
+              "Ref": "AWS::URLSuffix"
+            },
+            "/dev"
+          ]
+        ]
+      },
+      "Export": {
+        "Name": "sls-chaos-lambda-demo-dev-ServiceEndpoint"
+      }
+    }
+  }
+}
